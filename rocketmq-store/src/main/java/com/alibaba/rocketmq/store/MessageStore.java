@@ -182,7 +182,7 @@ public interface MessageStore {
     public long now();
 
 
-    public int cleanUnusedTopic(final Set<String> topics);
+    public int cleanUnusedTopic(final Set<String> topics);    
 
 
     /**

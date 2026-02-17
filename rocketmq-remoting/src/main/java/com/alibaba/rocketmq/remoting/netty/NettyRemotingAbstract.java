@@ -108,9 +108,11 @@ public abstract class NettyRemotingAbstract {
 
             final ChannelEventListener listener = NettyRemotingAbstract.this.getChannelEventListener();
 
+            //从 eventQueue中取消息到ChannelEventListener处理
             while (!this.isStoped()) {
                 try {
-                    NettyEvent event = this.eventQueue.poll(3000, TimeUnit.MILLISECONDS);
+                    NettyEvent event = this.eventQueue.poll(3000, TimeUnit.MILLISECONDS); //如果队列为空,堵塞3秒(3秒后没有数据返回null),3秒相当于有个
+                    //3秒的时间有机会去检查while(!this.siStoped())这个停止标志
                     if (event != null && listener != null) {
                         switch (event.getType()) {
                         case IDLE:
@@ -163,13 +165,13 @@ public abstract class NettyRemotingAbstract {
                 @Override
                 public void run() {
                     try {
-                        RPCHook rpcHook = NettyRemotingAbstract.this.getRPCHook();
+                        RPCHook rpcHook = NettyRemotingAbstract.this.getRPCHook(); //在各个阶段进行回调
                         if (rpcHook != null) {
                             rpcHook
                                 .doBeforeRequest(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), cmd);
                         }
 
-                        final RemotingCommand response = pair.getObject1().processRequest(ctx, cmd);
+                        final RemotingCommand response = pair.getObject1().processRequest(ctx, cmd); //获取pair的第一个元素,处理消息,函数返回的是一个结果
                         if (rpcHook != null) {
                             rpcHook.doAfterResponse(RemotingHelper.parseChannelRemoteAddr(ctx.channel()),
                                 cmd, response);
@@ -180,7 +182,7 @@ public abstract class NettyRemotingAbstract {
                                 response.setOpaque(cmd.getOpaque());
                                 response.markResponseType();
                                 try {
-                                    ctx.writeAndFlush(response);
+                                    ctx.writeAndFlush(response); //返回结果给请求者
                                 }
                                 catch (Throwable e) {
                                     plog.error("process request over, but response failed", e);
@@ -200,7 +202,7 @@ public abstract class NettyRemotingAbstract {
                         if (!cmd.isOnewayRPC()) {
                             final RemotingCommand response =
                                     RemotingCommand.createResponseCommand(
-                                        RemotingSysResponseCode.SYSTEM_ERROR,//
+                                        RemotingSysResponseCode.SYSTEM_ERROR,// 返回系统错误给请求者
                                         RemotingHelper.exceptionSimpleDesc(e));
                             response.setOpaque(cmd.getOpaque());
                             ctx.writeAndFlush(response);
@@ -211,9 +213,13 @@ public abstract class NettyRemotingAbstract {
 
             try {
                 // 这里需要做流控，要求线程池对应的队列必须是有大小限制的
-                pair.getObject2().submit(run);
+                pair.getObject2().submit(run); //获取piar的第二个参数,是一个线程池
             }
-            catch (RejectedExecutionException e) {
+            catch (RejectedExecutionException e) { //ExecutorService new 对象的时候可以通过参数设置线程数和等待队列的长度
+            //                 第一：
+            // 你的线程池ThreadPoolExecutor 显示的shutdown()之后，再向线程池提交任务的时候。 如果你配置的拒绝策略是AbortPolicy的话，这个异常就会抛出来。
+            // 第二：
+            // 当你设置的任务缓存队列过小的时候，或者说， 你的线程池里面所有的线程都在干活（线程数== maxPoolSize),并且你的任务缓存队列也已经充满了等待的队列， 这个时候，你再向它提交任务，则会抛出这个异常。
                 // 每个线程10s打印一次
                 if ((System.currentTimeMillis() % 10000) == 0) {
                     plog.warn(RemotingHelper.parseChannelRemoteAddr(ctx.channel()) //
@@ -222,7 +228,7 @@ public abstract class NettyRemotingAbstract {
                             + " request code: " + cmd.getCode());
                 }
 
-                if (!cmd.isOnewayRPC()) {
+                if (!cmd.isOnewayRPC()) { //返回系统繁忙给请求者
                     final RemotingCommand response =
                             RemotingCommand.createResponseCommand(RemotingSysResponseCode.SYSTEM_BUSY,
                                 "too many requests and system thread pool busy, please try another server");
@@ -231,7 +237,7 @@ public abstract class NettyRemotingAbstract {
                 }
             }
         }
-        else {
+        else { //命令不支持,没有注册对应的处理器和线程池pair
             String error = " request type " + cmd.getCode() + " not supported";
             final RemotingCommand response =
                     RemotingCommand.createResponseCommand(RemotingSysResponseCode.REQUEST_CODE_NOT_SUPPORTED,
@@ -259,7 +265,7 @@ public abstract class NettyRemotingAbstract {
                             @Override
                             public void run() {
                                 try {
-                                    responseFuture.executeInvokeCallback();
+                                    responseFuture.executeInvokeCallback(); //
                                 }
                                 catch (Throwable e) {
                                     plog.warn("excute callback in executor exception, and callback throw", e);
@@ -278,7 +284,7 @@ public abstract class NettyRemotingAbstract {
 
                 if (runInThisThread) {
                     try {
-                        responseFuture.executeInvokeCallback();
+                        responseFuture.executeInvokeCallback(); //里面做了控制,只能回调一次(线程次有错误的时候或者立刻执行完了)
                     }
                     catch (Throwable e) {
                         plog.warn("executeInvokeCallback Exception", e);
@@ -286,7 +292,7 @@ public abstract class NettyRemotingAbstract {
                 }
             }
             else {
-                responseFuture.putResponse(cmd);
+                responseFuture.putResponse(cmd); //会唤醒respnseFuture.waitResponse
             }
         }
         else {
@@ -295,7 +301,7 @@ public abstract class NettyRemotingAbstract {
             plog.warn(cmd.toString());
         }
 
-        responseTable.remove(cmd.getOpaque());
+        responseTable.remove(cmd.getOpaque()); //请求已经处理完毕！！
     }
 
 
@@ -319,6 +325,7 @@ public abstract class NettyRemotingAbstract {
     abstract public ExecutorService getCallbackExecutor();
 
 
+    //超时检查
     public void scanResponseTable() {
         Iterator<Entry<Integer, ResponseFuture>> it = this.responseTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -343,19 +350,22 @@ public abstract class NettyRemotingAbstract {
     }
 
 
+    //同步调用的实现
     public RemotingCommand invokeSyncImpl(final Channel channel, final RemotingCommand request,
             final long timeoutMillis) throws InterruptedException, RemotingSendRequestException,
             RemotingTimeoutException {
         try {
+            //创建一个ResponseFutrue
             final ResponseFuture responseFuture =
                     new ResponseFuture(request.getOpaque(), timeoutMillis, null, null);
-            this.responseTable.put(request.getOpaque(), responseFuture);
+            this.responseTable.put(request.getOpaque(), responseFuture); //存到表里
+            //flush 发送请求并监听事件
             channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture f) throws Exception {
                     if (f.isSuccess()) {
                         responseFuture.setSendRequestOK(true);
-                        return;
+                        return; //如果成功在这里返回
                     }
                     else {
                         responseFuture.setSendRequestOK(false);
@@ -363,19 +373,20 @@ public abstract class NettyRemotingAbstract {
 
                     responseTable.remove(request.getOpaque());
                     responseFuture.setCause(f.cause());
-                    responseFuture.putResponse(null);
+                    responseFuture.putResponse(null);  //会唤醒responseFuture.waitResponse
+                    //by Liang: 直接判断为发送失败, 因为isSuccess会return
                     plog.warn("send a request command to channel <" + channel.remoteAddress() + "> failed.");
                     plog.warn(request.toString());
                 }
             });
-
+            // 等待返回(processResponseCommand),阻塞线程
             RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
             if (null == responseCommand) {
-                if (responseFuture.isSendRequestOK()) {
+                if (responseFuture.isSendRequestOK()) { //发送OK，但是responseCommand还没有设置,上面的scantable处理超时
                     throw new RemotingTimeoutException(RemotingHelper.parseChannelRemoteAddr(channel),
                         timeoutMillis, responseFuture.getCause());
                 }
-                else {
+                else { //请求错误
                     throw new RemotingSendRequestException(RemotingHelper.parseChannelRemoteAddr(channel),
                         responseFuture.getCause());
                 }
@@ -388,13 +399,13 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
-
+    //异步调用的实现，跟上面函数的区别是，带回到参数(没有调用waitResponse阻塞结果)
     public void invokeAsyncImpl(final Channel channel, final RemotingCommand request,
             final long timeoutMillis, final InvokeCallback invokeCallback) throws InterruptedException,
             RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
         boolean acquired = this.semaphoreAsync.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
-        if (acquired) {
-            final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreAsync);
+        if (acquired) { //获取到信号量通行证
+            final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreAsync); //用compareAndSet来保证只释放一次
 
             final ResponseFuture responseFuture =
                     new ResponseFuture(request.getOpaque(), timeoutMillis, invokeCallback, once);
@@ -414,7 +425,7 @@ public abstract class NettyRemotingAbstract {
                         responseFuture.putResponse(null);
                         responseTable.remove(request.getOpaque());
                         try {
-                            responseFuture.executeInvokeCallback();
+                            responseFuture.executeInvokeCallback(); //执行回调
                         }
                         catch (Throwable e) {
                             plog.warn("excute callback in writeAndFlush addListener, and callback throw", e);

@@ -14,6 +14,7 @@ import com.alibaba.rocketmq.common.MixAll;
  */
 public class BrokerData implements Comparable<BrokerData> {
     private String brokerName;
+    //ID->ADDR
     private HashMap<Long/* brokerId */, String/* broker address */> brokerAddrs;
 
 

@@ -38,7 +38,7 @@ public class ResponseFuture {
     private final long timeoutMillis;
     private final InvokeCallback invokeCallback;
     private final long beginTimestamp = System.currentTimeMillis();
-    private final CountDownLatch countDownLatch = new CountDownLatch(1);
+    private final CountDownLatch countDownLatch = new CountDownLatch(1);  //调用await的时候阻塞当前线程,直到为0才唤醒
 
     // 保证信号量至多至少只被释放一次
     private final SemaphoreReleaseOnlyOnce once;
@@ -58,8 +58,8 @@ public class ResponseFuture {
 
     public void executeInvokeCallback() {
         if (invokeCallback != null) {
-            if (this.executeCallbackOnlyOnce.compareAndSet(false, true)) {
-                invokeCallback.operationComplete(this);
+            if (this.executeCallbackOnlyOnce.compareAndSet(false, true)) { //如果是false,则设置为true.
+                invokeCallback.operationComplete(this); //调用回调函数
             }
         }
     }
@@ -79,14 +79,14 @@ public class ResponseFuture {
 
 
     public RemotingCommand waitResponse(final long timeoutMillis) throws InterruptedException {
-        this.countDownLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+        this.countDownLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);//等待countDown来唤醒
         return this.responseCommand;
     }
 
 
     public void putResponse(final RemotingCommand responseCommand) {
         this.responseCommand = responseCommand;
-        this.countDownLatch.countDown();
+        this.countDownLatch.countDown(); //唤醒上面的函数waitResponse
     }
 
 

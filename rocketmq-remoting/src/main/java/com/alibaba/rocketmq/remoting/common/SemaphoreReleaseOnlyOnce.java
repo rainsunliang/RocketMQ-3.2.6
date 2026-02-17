@@ -37,7 +37,7 @@ public class SemaphoreReleaseOnlyOnce {
 
     public void release() {
         if (this.semaphore != null) {
-            if (this.released.compareAndSet(false, true)) {
+            if (this.released.compareAndSet(false, true)) { //By Liang: 这里是线性安全的
                 this.semaphore.release();
             }
         }

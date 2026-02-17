@@ -110,7 +110,7 @@ public class BrokerStartup {
             final BrokerConfig brokerConfig = new BrokerConfig();
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             final NettyClientConfig nettyClientConfig = new NettyClientConfig();
-            nettyServerConfig.setListenPort(10911);
+            nettyServerConfig.setListenPort(10911); //这么写就不能单机多开了？
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
             // 如果是slave，修改默认值

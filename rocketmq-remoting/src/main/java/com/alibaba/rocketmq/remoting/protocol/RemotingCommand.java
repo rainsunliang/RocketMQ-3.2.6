@@ -48,13 +48,13 @@ public class RemotingCommand {
     /**
      * Header 部分
      */
-    private int code;
+    private int code; //相当于协议号
     private LanguageCode language = LanguageCode.JAVA;
     private int version = 0;
-    private int opaque = RequestId.getAndIncrement();
+    private int opaque = RequestId.getAndIncrement(); //全局自增ID
     private int flag = 0;
     private String remark;
-    private HashMap<String, String> extFields;
+    private HashMap<String, String> extFields; //扩展字段
 
     private transient CommandCustomHeader customHeader;
 
@@ -104,7 +104,7 @@ public class RemotingCommand {
 
         if (classHeader != null) {
             try {
-                CommandCustomHeader objectHeader = classHeader.newInstance();
+                CommandCustomHeader objectHeader = classHeader.newInstance(); //可以自定义头部
                 cmd.customHeader = objectHeader;
             }
             catch (InstantiationException e) {
@@ -119,7 +119,7 @@ public class RemotingCommand {
     }
 
 
-    private static void setCmdVersion(RemotingCommand cmd) {
+    private static void setCmdVersion(RemotingCommand cmd) { //如果参数的版本高设置为参数的版本
         if (ConfigVersion >= 0) {
             cmd.setVersion(ConfigVersion);
         }
@@ -134,20 +134,20 @@ public class RemotingCommand {
     }
 
 
-    public void makeCustomHeaderToNet() {
+    public void makeCustomHeaderToNet() { //放入extFields
         if (this.customHeader != null) {
             Field[] fields = this.customHeader.getClass().getDeclaredFields();
             if (null == this.extFields) {
-                this.extFields = new HashMap<String, String>();
+                this.extFields = new HashMap<String, String>(); //delay init
             }
 
             for (Field field : fields) {
                 if (!Modifier.isStatic(field.getModifiers())) {
                     String name = field.getName();
-                    if (!name.startsWith("this")) {
+                    if (!name.startsWith("this")) { //过滤this开头的变量
                         Object value = null;
                         try {
-                            field.setAccessible(true);
+                            field.setAccessible(true); //这样就能够访问私有变量private修饰的
                             value = field.get(this.customHeader);
                         }
                         catch (IllegalArgumentException e) {
@@ -206,7 +206,7 @@ public class RemotingCommand {
             // 检查返回对象是否有效
             Field[] fields = objectHeader.getClass().getDeclaredFields();
             for (Field field : fields) {
-                if (!Modifier.isStatic(field.getModifiers())) {
+                if (!Modifier.isStatic(field.getModifiers())) { //非静态变量
                     String fieldName = field.getName();
                     if (!fieldName.startsWith("this")) {
                         try {

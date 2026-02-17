@@ -108,7 +108,7 @@ public class MessageStoreConfig {
     @ImportantField
     private boolean messageIndexSafe = false;
     // HA功能
-    private int haListenPort = 10912;
+    private int haListenPort = 10912; //10911是源
     private int haSendHeartbeatInterval = 1000 * 5;
     private int haHousekeepingInterval = 1000 * 20;
     private int haTransferBatchSize = 1024 * 32;

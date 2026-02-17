@@ -223,6 +223,7 @@ public class KVConfigManager {
     }
 
 
+    //持久化到文件中
     public void persist() {
         try {
             this.lock.readLock().lockInterruptibly();

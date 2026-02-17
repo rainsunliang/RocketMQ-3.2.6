@@ -82,7 +82,7 @@ public class BrokerOuterAPI {
         this.remotingClient.shutdown();
     }
 
-
+    //更新NameServer服务地址
     public String fetchNameServerAddr() {
         try {
             String addrs = this.topAddressing.fetchNSAddr();
@@ -109,22 +109,22 @@ public class BrokerOuterAPI {
             for (String addr : addrArray) {
                 lst.add(addr);
             }
-
+            //更新remotingClient的地址
             this.remotingClient.updateNameServerAddressList(lst);
         }
     }
 
-
+    //注册本Broker到指定的NameServer服务器
     private RegisterBrokerResult registerBroker(//
             final String namesrvAddr,//
-            final String clusterName,// 1
-            final String brokerAddr,// 2
-            final String brokerName,// 3
-            final long brokerId,// 4
-            final String haServerAddr,// 5
-            final TopicConfigSerializeWrapper topicConfigWrapper, // 6
-            final List<String> filterServerList,// 7
-            final boolean oneway// 8
+            final String clusterName,// 1   集群名字
+            final String brokerAddr,// 2    本Broeker地址
+            final String brokerName,// 3    本Broker名字
+            final long brokerId,// 4        本BrokerID 
+            final String haServerAddr,// 5  本Broker的高可用服务器地址
+            final TopicConfigSerializeWrapper topicConfigWrapper, // 6   本Broker的Topic配置
+            final List<String> filterServerList,// 7  过滤服务器列表
+            final boolean oneway// 8   是否是单向
     ) throws RemotingCommandException, MQBrokerException, RemotingConnectException,
             RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
         RegisterBrokerRequestHeader requestHeader = new RegisterBrokerRequestHeader();
@@ -174,6 +174,7 @@ public class BrokerOuterAPI {
     }
 
 
+    //注册本Broker到“所有”的NameServer服务器
     public RegisterBrokerResult registerBrokerAll(//
             final String clusterName,// 1
             final String brokerAddr,// 2
@@ -209,6 +210,7 @@ public class BrokerOuterAPI {
     }
 
 
+    //从指定的NameServer取消Broker的注册
     public void unregisterBroker(//
             final String namesrvAddr,//
             final String clusterName,// 1
@@ -239,6 +241,7 @@ public class BrokerOuterAPI {
     }
 
 
+    //从所有的Nameserver取消Broker的注册
     public void unregisterBrokerAll(//
             final String clusterName,// 1
             final String brokerAddr,// 2
@@ -260,6 +263,7 @@ public class BrokerOuterAPI {
     }
 
 
+    // 获取所有的TopicConfig(向addr发送请求)
     public TopicConfigSerializeWrapper getAllTopicConfig(final String addr) throws RemotingConnectException,
             RemotingSendRequestException, RemotingTimeoutException, InterruptedException, MQBrokerException {
         RemotingCommand request =
@@ -280,7 +284,7 @@ public class BrokerOuterAPI {
 
 
     /**
-     * 获取所有Consumer Offset
+     * 获取所有Consumer Offset(向addr发送请求)
      * 
      * @param addr
      * @return
@@ -306,7 +310,7 @@ public class BrokerOuterAPI {
 
 
     /**
-     * 获取所有定时进度
+     * 获取所有定时进度(向addr发送请求)
      * 
      * @param addr
      * @return
@@ -330,7 +334,7 @@ public class BrokerOuterAPI {
 
 
     /**
-     * 获取订阅组配置
+     * 获取订阅组配置 (向addr发送请求)
      * 
      * @param addr
      * @return

@@ -69,6 +69,7 @@ public class ConsumeQueue {
         this.topic = topic;
         this.queueId = queueId;
 
+        // 地址/topic/queueId
         String queueDir = this.storePath//
                 + File.separator + topic//
                 + File.separator + queueId;//

@@ -83,14 +83,14 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
 
     public NettyRemotingServer(final NettyServerConfig nettyServerConfig) {
-        this(nettyServerConfig, null);
+        this(nettyServerConfig, null); //调用两个参数的构造函数
     }
 
 
     public NettyRemotingServer(final NettyServerConfig nettyServerConfig,
             final ChannelEventListener channelEventListener) {
         super(nettyServerConfig.getServerOnewaySemaphoreValue(), nettyServerConfig
-            .getServerAsyncSemaphoreValue());
+            .getServerAsyncSemaphoreValue()); //调用父类的构造函数
         this.serverBootstrap = new ServerBootstrap();
         this.nettyServerConfig = nettyServerConfig;
         this.channelEventListener = channelEventListener;
@@ -100,6 +100,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             publicThreadNums = 4;
         }
 
+        //公共的处理线程池
         this.publicExecutor = Executors.newFixedThreadPool(publicThreadNums, new ThreadFactory() {
             private AtomicInteger threadIndex = new AtomicInteger(0);
 
@@ -110,6 +111,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             }
         });
 
+        //BOSS 一个线程
         this.eventLoopGroupBoss = new NioEventLoopGroup(1, new ThreadFactory() {
             private AtomicInteger threadIndex = new AtomicInteger(0);
 
@@ -121,6 +123,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             }
         });
 
+        //Worker 从配置中读取
         this.eventLoopGroupWorker =
                 new NioEventLoopGroup(nettyServerConfig.getServerSelectorThreads(), new ThreadFactory() {
                     private AtomicInteger threadIndex = new AtomicInteger(0);
@@ -159,7 +162,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     //
                     .option(ChannelOption.SO_REUSEADDR, true)
                     //
-                    .option(ChannelOption.SO_KEEPALIVE, false)
+                    .option(ChannelOption.SO_KEEPALIVE, false) //应用层自己做心跳?像我们游戏就是应用层自己做这个心跳
                     //
                     .childOption(ChannelOption.TCP_NODELAY, true)
                     //
@@ -174,12 +177,12 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                             ch.pipeline().addLast(
                                 //
                                 defaultEventExecutorGroup, //
-                                new NettyEncoder(), //
-                                new NettyDecoder(), //
+                                new NettyEncoder(), // NettyEncoder.java define
+                                new NettyDecoder(), // NettyDecode.java define
                                 new IdleStateHandler(0, 0, nettyServerConfig
-                                    .getServerChannelMaxIdleTimeSeconds()),//
-                                new NettyConnetManageHandler(), //
-                                new NettyServerHandler());
+                                    .getServerChannelMaxIdleTimeSeconds()), // define in netty frame
+                                new NettyConnetManageHandler(), // define in this file
+                                new NettyServerHandler()); //define in this file
                         }
                     });
 
@@ -216,7 +219,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }, 1000 * 3, 1000);
     }
 
-
+    //根据请求ID设置处理器,如果线程池为空,则设置为公共的线程池(不大了解这个公共的池有啥用,就是为了兼容或者方便默认?)
     @Override
     public void registerProcessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
         ExecutorService executorThis = executor;
@@ -230,6 +233,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     }
 
 
+    //设置默认线程池
     @Override
     public void registerDefaultProcessor(NettyRequestProcessor processor, ExecutorService executor) {
         this.defaultRequestProcessor = new Pair<NettyRequestProcessor, ExecutorService>(processor, executor);
@@ -309,10 +313,12 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, RemotingCommand msg) throws Exception {
-            processMessageReceived(ctx, msg);
+            //处理接收到的消息
+            processMessageReceived(ctx, msg); //在父类中定义的处理函数
         }
     }
 
+    //继承于全双工
     class NettyConnetManageHandler extends ChannelDuplexHandler {
         @Override
         public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
@@ -337,6 +343,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             super.channelActive(ctx);
 
             if (NettyRemotingServer.this.channelEventListener != null) {
+                //处理连接事件
                 NettyRemotingServer.this.putNettyEvent(new NettyEvent(NettyEventType.CONNECT, remoteAddress
                     .toString(), ctx.channel()));
             }
@@ -350,6 +357,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             super.channelInactive(ctx);
 
             if (NettyRemotingServer.this.channelEventListener != null) {
+                //处理关闭事件
                 NettyRemotingServer.this.putNettyEvent(new NettyEvent(NettyEventType.CLOSE, remoteAddress
                     .toString(), ctx.channel()));
             }
@@ -365,12 +373,13 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     log.warn("NETTY SERVER PIPELINE: IDLE exception [{}]", remoteAddress);
                     RemotingUtil.closeChannel(ctx.channel());
                     if (NettyRemotingServer.this.channelEventListener != null) {
+                        //处理IDLE事件
                         NettyRemotingServer.this.putNettyEvent(new NettyEvent(NettyEventType.IDLE,
                             remoteAddress.toString(), ctx.channel()));
                     }
                 }
             }
-
+            //如果是非IDLE事件,通过函数这个到下一个handler处理
             ctx.fireUserEventTriggered(evt);
         }
 

@@ -62,7 +62,7 @@ public class NamesrvController {
      * 核心数据结构
      */
     private final KVConfigManager kvConfigManager;
-    private final RouteInfoManager routeInfoManager;
+    private final RouteInfoManager routeInfoManager;  //路由信息
 
 
     public NamesrvController(NamesrvConfig namesrvConfig, NettyServerConfig nettyServerConfig) {
@@ -86,6 +86,7 @@ public class NamesrvController {
                 Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(),
                     new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        //将上面的线程池 remotingExecutor 注册到默认的处理器中
         this.registerProcessor();
 
         // 增加定时任务
@@ -97,6 +98,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        // 定期打印信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

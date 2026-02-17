@@ -18,7 +18,7 @@ import com.alibaba.rocketmq.remoting.protocol.RemotingSerializable;
 public class TopicRouteData extends RemotingSerializable {
     private String orderTopicConf;
     private List<QueueData> queueDatas;
-    private List<BrokerData> brokerDatas;
+    private List<BrokerData> brokerDatas; //一个topic可以发到多个组broker,每组broker主从等多个broker
     private HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
 
